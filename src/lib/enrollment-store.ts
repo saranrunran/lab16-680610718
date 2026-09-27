@@ -3,54 +3,101 @@ import { create } from "zustand";
 import {
   students as initialStudents,
   courses as initialCourses,
-  enrollments as initialEnrollments,
+  students,
+  courses,
 } from "@/lib/mock-data";
-import type { Course, Enrollment, Student } from "@/lib/types";
+import type { Course, Student } from "@/lib/types";
+import { persist } from "zustand/middleware";
 
 type EnrollmentStore = {
   students: Student[];
   courses: Course[];
-  enrollments: Enrollment[];
-  /** Admin ลงทะเบียนวิชาให้นักศึกษาคนใดก็ได้ (ไม่ซ้ำกับที่มีอยู่แล้ว) */
-  enroll: (studentId: string, courseId: string) => void;
-  /** Admin ยกเลิกการลงทะเบียนของนักศึกษาคนใดก็ได้ */
-  drop: (studentId: string, courseId: string) => void;
+
+  //เพิ่มวิชานั้นๆ
+  addCourse: (course: Course) => void;
+  //ลบผู้สอน
+  removeInstruc: (instruc: string, courseId: string) => void;
+  //ลงทะเบียนนศ
+  enrollStudent: (studentId: string[], courseId: string) => void;
+  //ลบนศแค่อันใดอันนึงไม่ทั้งหมด
+  unenrollStudent: (studentId: string, courseId: string) => void;
   /** ลบนักศึกษา พร้อมการลงทะเบียนทั้งหมดของคนนั้น */
   removeStudent: (studentId: string) => void;
   /** ลบวิชาออกจากรายวิชาที่เปิดสอน พร้อม cascade ลบ enrollment ที่อ้างถึงวิชานั้นทั้งหมด */
   removeCourse: (courseId: string) => void;
 };
 
-export const useEnrollmentStore = create<EnrollmentStore>((set) => ({
-  students: initialStudents,
-  courses: initialCourses,
-  enrollments: initialEnrollments,
+export const useEnrollmentStore = create<EnrollmentStore>()(
+  persist (
+    (set) => ({
+    students: initialStudents,
+    courses: initialCourses,
 
-  enroll: (studentId, courseId) =>
-    set((state) => ({
-      enrollments: state.enrollments.some(
-        (e) => e.studentId === studentId && e.courseId === courseId,
-      )
-        ? state.enrollments
-        : [...state.enrollments, { studentId, courseId }],
-    })),
+    addCourse: (course) =>
+      set((state)=>({
+        courses: [...state.courses, course]
+      })),
 
-  drop: (studentId, courseId) =>
-    set((state) => ({
-      enrollments: state.enrollments.filter(
-        (e) => !(e.studentId === studentId && e.courseId === courseId),
-      ),
-    })),
+    removeInstruc: (instruc, courseId) =>
+      set((state) => ({
+        courses: state.courses.map((course) =>
+          course.courseCode === courseId
+          ? {
+            ...course,
+            instruc: (course.instructors)?.filter(
+              (i) => i !== instruc,
+            ),
+          }
+          : course
+        ),
+      })),
 
-  removeStudent: (studentId) =>
-    set((state) => ({
-      students: state.students.filter((s) => s.studentId !== studentId),
-      enrollments: state.enrollments.filter((e) => e.studentId !== studentId),
-    })),
+    enrollStudent: (studentId, courseId) =>
+      set((state) => ({
+        students: state.students.map((s) => 
+          studentId.includes(s.studentId) && 
+            !s.enrolledCourses?.includes(courseId)
+            ? {...s, enrolledCourse: [...[s.enrolledCourses] , courseId]} : s,
+        ),
+      })),
 
-  removeCourse: (courseId) =>
-    set((state) => ({
-      courses: state.courses.filter((c) => c.courseId !== courseId),
-      enrollments: state.enrollments.filter((e) => e.courseId !== courseId),
-    })),
-}));
+    unenrollStudent: (studentId, courseId) =>
+      set((state) => ({
+        students: state.students.map((s) => 
+          s.studentId === studentId
+          ? {
+            ...s,
+            enrolledCourse: s.enrolledCourses?.filter(
+              (c) => c !== courseId,
+            )
+          } : s,
+        ),
+      })),
+
+    removeStudent: (studentId) =>
+      set((state) => ({
+        students: state.students.filter((s) => s.studentId !== studentId),
+        // enrollments: state.enrollments.filter((e) => e.studentId !== studentId),
+      })),
+
+    removeCourse: (courseId) => //ลบวิชาออก วิชาหาย นักเรียนที่ลงวิชานั้น ก้จะหายไปด้วย
+      set((state) => ({
+        courses: state.courses.filter((c) => c.courseCode !== courseId), //เอาเหลือแค่ที่เหลือ
+        students: state.students.map((std) => ({
+          ...std,
+          enrolledCourses: std.enrolledCourses?.filter(
+            (c) => c !== courseId
+          ),
+        }),
+        ),
+      })),
+    }),
+    {
+      name: "lab16-2569-680610718",
+      partialize: (state) => ({
+        students: state.students,
+        courses: state.courses,
+      }),
+    },
+  ),
+);
