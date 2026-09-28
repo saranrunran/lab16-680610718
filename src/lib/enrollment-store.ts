@@ -3,8 +3,6 @@ import { create } from "zustand";
 import {
   students as initialStudents,
   courses as initialCourses,
-  students,
-  courses,
 } from "@/lib/mock-data";
 import type { Course, Student } from "@/lib/types";
 import { persist } from "zustand/middleware";

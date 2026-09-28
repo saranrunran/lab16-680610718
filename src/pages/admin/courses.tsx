@@ -16,13 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -44,42 +37,6 @@ import {
   useComboboxAnchor,
 } from "@/components/ui/combobox"
 import { useEnrollmentStore } from "@/lib/enrollment-store";
-
-
-type Option = { value: string; label: string };
-
-function OptionSelect({
-  id,
-  options,
-  value,
-  onChange,
-  placeholder,
-}: {
-  id: string;
-  options: Option[];
-  value: string | null;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}) {
-  return (
-    <Select
-      items={options}
-      value={value}
-      onValueChange={(v) => onChange(v as string)}
-    >
-      <SelectTrigger id={id} className="w-full min-w-0">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
 
 export default function AdminCoursesPage() {
   const { courses, addCourse, removeInstruc, removeCourse } = useEnrollmentStore();
@@ -198,6 +155,7 @@ export default function AdminCoursesPage() {
                                 <ComboboxChipsInput
                                     value={instrucInput}
                                     onChange={(e)=> setInstrucInput(e.target.value)}
+                                    placeholder="เลือกหรือพิมพ์ชื่อผู้สอน(ได้หลายคน)"
                                 />
                                 </React.Fragment>
                             )}
