@@ -24,7 +24,7 @@ type EnrollmentStore = {
   /** ลบวิชาออกจากรายวิชาที่เปิดสอน พร้อม cascade ลบ enrollment ที่อ้างถึงวิชานั้นทั้งหมด */
   removeCourse: (courseId: string) => void;
 };
-
+//after run build
 export const useEnrollmentStore = create<EnrollmentStore>()(
   persist (
     (set) => ({
