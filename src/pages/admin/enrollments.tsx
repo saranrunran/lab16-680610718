@@ -2,6 +2,7 @@ import { useState } from "react";
 import { PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -81,7 +82,7 @@ function OptionSelect({
 export default function AdminEnrollmentsPage() {
   const { students, courses, enrollStudent, unenrollStudent } = useEnrollmentStore();
 
-  const [formStudent, setFormStudent] = useState<string[] | null>(null);
+  const [formStudent, setFormStudent] = useState<string[]>([]);
   const [formCourse, setFormCourse] = useState<string | null>(null);
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [mode, setMode] = useState<"course" | "student">("course");
@@ -108,8 +109,12 @@ export default function AdminEnrollmentsPage() {
   const availableStudents = students.filter((s) => !s.enrolledCourses?.some((f)=> formCourse===f));
 
   const handleEnroll = () => {
-    if (!formStudent || !formCourse) return;
+    if (!formStudent?.length || !formCourse) return;
     enrollStudent(formStudent, formCourse);
+
+    setFormStudent([]);
+    setFormCourse(null);
+    
     setEnrollDialogOpen(false);
   };
 
@@ -118,7 +123,7 @@ export default function AdminEnrollmentsPage() {
   const handleEnrollDialogOpenChange = (open: boolean) => {
     setEnrollDialogOpen(open);
     if (!open) {
-      setFormStudent(null);
+      setFormStudent([]);
       setFormCourse(null);
     }
   };
@@ -168,7 +173,7 @@ export default function AdminEnrollmentsPage() {
                 value={formCourse}
                 placeholder="เลือกวิชา"
                 onChange={(v: string)=> {
-                  setFormStudent(null);
+                  setFormStudent([]);
                   setFormCourse(v);
                 }}
               />
@@ -187,8 +192,10 @@ export default function AdminEnrollmentsPage() {
                   <ComboboxValue>
                     {(values) => (
                       <React.Fragment>
-                        {values?.map((value: string) => (
-                          <ComboboxChip key={value}>{value}</ComboboxChip>
+                        {values?.map((id: string) => (
+                          <ComboboxChip key={id}>
+                            {nameOf(id)}
+                          </ComboboxChip>
                         ))}
                         <ComboboxChipsInput />
                       </React.Fragment>
@@ -209,9 +216,9 @@ export default function AdminEnrollmentsPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button disabled={!formStudent || !formCourse} onClick={handleEnroll}>
+            <Button disabled={!formStudent.length || !formCourse} onClick={handleEnroll}>
               <PlusCircle className="h-4 w-4" />
-              ลงทะเบียน
+              ลงทะเบียน ({formStudent?.length} คน)
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -247,10 +254,10 @@ export default function AdminEnrollmentsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>รหัสนักศึกษา</TableHead>
-              <TableHead>ชื่อ-นามสกุล</TableHead>
               <TableHead>รหัสวิชา</TableHead>
               <TableHead>ชื่อวิชา</TableHead>
+              <TableHead>จำนวน นศ.</TableHead>
+              <TableHead>นักศึกษาที่ลงทะเบียน</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -264,14 +271,43 @@ export default function AdminEnrollmentsPage() {
                 </TableCell>
               </TableRow>
             )}
-            {rows.map((e) => (
-              <TableRow key={`${e.studentId}-${e.courseId}`}>
-                <TableCell>{e.studentId}</TableCell>
-                <TableCell>{nameOf(e.studentId)}</TableCell>
-                <TableCell>{e.courseId}</TableCell>
-                <TableCell>{titleOf(e.courseId)}</TableCell>
+            {rows.map((c) => {
+              const enrollStudent = students.filter((s) =>
+                s.enrolledCourses?.includes(c.courseCode),
+              );
+              return (
+              <TableRow key={`${c.courseCode}`}>
+                <TableCell>{c.courseCode}</TableCell>
+                <TableCell>{c.courseTitle}</TableCell>
+                <TableCell>{enrollStudent.length}</TableCell>
+                <TableCell>{enrollStudent.length > 0
+                  ?
+                  (<div className="flex flex-wrap gap-1">
+                      {enrollStudent.map((s) => (
+                        <Badge
+                          key={s.studentId}
+                          variant="outline"
+                          className="gap-1 border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-300"
+                        >
+                          {s.firstName} {s.lastName}
+                          <button
+                            type="button"
+                            aria-label={`ลบ ${s.firstName} ออกจากวิชา`}
+                            onClick={() => {
+                              console.log("ลบวิชา:", c.courseCode, "จากนักศึกษา:", s.studentId);
+                              unenrollStudent(s.studentId, c.courseCode)
+                            }}
+                            className="ml-0.5 rounded-full hover:opacity-70"
+                          >
+                            ×
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>) : <span className="text-muted-foreground">ยังไม่มีนักศึกษาลงทะเบียน</span>
+                  }</TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

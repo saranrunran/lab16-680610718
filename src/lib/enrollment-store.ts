@@ -54,11 +54,16 @@ export const useEnrollmentStore = create<EnrollmentStore>()(
 
     enrollStudent: (studentId, courseId) =>
       set((state) => ({
-        students: state.students.map((s) => 
-          studentId.includes(s.studentId) && 
-            !s.enrolledCourses?.includes(courseId)
-            ? {...s, enrolledCourse: [...[s.enrolledCourses] , courseId]} : s,
-        ),
+        students: state.students.map((s) => {
+          if (studentId.includes(s.studentId)) {
+            if(s.enrolledCourses?.includes(courseId)) return s;
+            return {
+              ...s,
+              enrolledCourses: [...(s.enrolledCourses || []), courseId],
+            };
+          }
+          return s;
+        })
       })),
 
     unenrollStudent: (studentId, courseId) =>
@@ -67,9 +72,7 @@ export const useEnrollmentStore = create<EnrollmentStore>()(
           s.studentId === studentId
           ? {
             ...s,
-            enrolledCourse: s.enrolledCourses?.filter(
-              (c) => c !== courseId,
-            )
+            enrolledCourses: (s.enrolledCourses || []).filter((c) => c !== courseId),
           } : s,
         ),
       })),
