@@ -27,6 +27,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import * as React from "react"
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxValue,
+  useComboboxAnchor,
+} from "@/components/ui/combobox"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useEnrollmentStore } from "@/lib/enrollment-store";
 
@@ -51,7 +64,7 @@ function OptionSelect({
       value={value}
       onValueChange={(v) => onChange(v as string)}
     >
-      <SelectTrigger id={id} className="w-full">
+      <SelectTrigger id={id} className="w-full min-w-0">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -66,9 +79,9 @@ function OptionSelect({
 }
 
 export default function AdminEnrollmentsPage() {
-  const { students, courses, enrollments, enroll } = useEnrollmentStore();
+  const { students, courses, enrollStudent, unenrollStudent } = useEnrollmentStore();
 
-  const [formStudent, setFormStudent] = useState<string | null>(null);
+  const [formStudent, setFormStudent] = useState<string[] | null>(null);
   const [formCourse, setFormCourse] = useState<string | null>(null);
   const [enrollDialogOpen, setEnrollDialogOpen] = useState(false);
   const [mode, setMode] = useState<"course" | "student">("course");
@@ -80,21 +93,23 @@ export default function AdminEnrollmentsPage() {
     label: `${s.studentId} — ${s.firstName} ${s.lastName}`,
   }));
   const courseOptions: Option[] = courses.map((c) => ({
-    value: c.courseId,
-    label: `${c.courseId} — ${c.courseTitle}`,
+    value: c.courseCode,
+    label: `${c.courseCode} — ${c.courseTitle}`,
   }));
 
   // วิชาที่นักศึกษาที่เลือกยังไม่ได้ลงทะเบียน
-  const availableCourseOptions = courseOptions.filter(
-    (c) =>
-      !enrollments.some(
-        (e) => e.studentId === formStudent && e.courseId === c.value
-      )
-  );
+  // const availableCourseOptions = courseOptions.filter(
+  //   (c) =>
+  //     !enrolledCourse.some(
+  //       (e) => e.studentId === formStudent && e.courseId === c.value
+  //     )
+  // );
+
+  const availableStudents = students.filter((s) => !s.enrolledCourses?.some((f)=> formCourse===f));
 
   const handleEnroll = () => {
     if (!formStudent || !formCourse) return;
-    enroll(formStudent, formCourse);
+    enrollStudent(formStudent, formCourse);
     setEnrollDialogOpen(false);
   };
 
@@ -108,18 +123,20 @@ export default function AdminEnrollmentsPage() {
     }
   };
 
-  const rows = enrollments.filter((e) =>
-    mode === "course"
-      ? filterCourse === "all" || e.courseId === filterCourse
-      : filterStudent === "all" || e.studentId === filterStudent
-  );
+  const rows = courses.filter((c) =>{
+    if (mode === "course") return filterCourse === "all" || c.courseCode === filterCourse
+    if (filterStudent === "all") return true;
+    return students.find((s) => s.studentId === filterStudent)?.enrolledCourses?.includes(c.courseCode)
+  });
 
   const nameOf = (studentId: string) => {
     const s = students.find((x) => x.studentId === studentId);
     return s ? `${s.firstName} ${s.lastName}` : "-";
   };
   const titleOf = (courseId: string) =>
-    courses.find((c) => c.courseId === courseId)?.courseTitle ?? "-";
+    courses.find((c) => c.courseCode === courseId)?.courseTitle ?? "-";
+
+  const anchor = useComboboxAnchor();
 
   return (
     <div className="space-y-4">
@@ -139,36 +156,56 @@ export default function AdminEnrollmentsPage() {
           <DialogHeader>
             <DialogTitle>ลงทะเบียนให้นักศึกษา</DialogTitle>
             <DialogDescription>
-              เลือกนักศึกษาก่อน แล้วเลือกวิชาที่ยังไม่ได้ลงทะเบียน
+              เลือกวิชาก่อน แล้วเลือกนักศึกษา
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="formStudent">นักศึกษา</Label>
-              <OptionSelect
-                id="formStudent"
-                options={studentOptions}
-                value={formStudent}
-                placeholder="เลือกนักศึกษา"
-                onChange={(v) => {
-                  setFormStudent(v);
-                  setFormCourse(null);
-                }}
-              />
-            </div>
+          <div className="grid gap-4 min-w-0">
             <div className="grid gap-1.5">
               <Label htmlFor="formCourse">วิชา</Label>
               <OptionSelect
                 id="formCourse"
-                options={availableCourseOptions}
+                options={courseOptions}
                 value={formCourse}
-                placeholder={
-                  formStudent && availableCourseOptions.length === 0
-                    ? "ลงทะเบียนครบทุกวิชาแล้ว"
-                    : "เลือกวิชา"
-                }
-                onChange={setFormCourse}
+                placeholder="เลือกวิชา"
+                onChange={(v: string)=> {
+                  setFormStudent(null);
+                  setFormCourse(v);
+                }}
               />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="formStudent">นักศึกษา</Label>
+              <Combobox
+                multiple
+                autoHighlight
+                items={availableStudents}
+                onValueChange={(v) => setFormStudent(v as string[])}
+                value={formStudent || []}
+                disabled={!formCourse}
+              >
+                <ComboboxChips ref={anchor}>
+                  <ComboboxValue>
+                    {(values) => (
+                      <React.Fragment>
+                        {values?.map((value: string) => (
+                          <ComboboxChip key={value}>{value}</ComboboxChip>
+                        ))}
+                        <ComboboxChipsInput />
+                      </React.Fragment>
+                    )}
+                  </ComboboxValue>
+                </ComboboxChips>
+                <ComboboxContent anchor={anchor}>
+                  <ComboboxEmpty>No items found.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(item) => (
+                      <ComboboxItem key={item.studentId} value={item.studentId}>
+                        {item.studentId} — {item.firstName} {item.lastName}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
             </div>
           </div>
           <DialogFooter>
