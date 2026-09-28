@@ -161,7 +161,7 @@ export default function AdminEnrollmentsPage() {
           <DialogHeader>
             <DialogTitle>ลงทะเบียนให้นักศึกษา</DialogTitle>
             <DialogDescription>
-              เลือกวิชาก่อน แล้วเลือกนักศึกษา
+              เลือกวิชาก่อน แล้วเลือกนักศึกษาที่ยังไม่ได้ลงทะเบียนวิชานั้น (เลือกได้มากกว่า 1 คน)
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 min-w-0">
